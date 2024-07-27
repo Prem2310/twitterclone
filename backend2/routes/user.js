@@ -1,64 +1,167 @@
-import  express  from "express";
-const router = express.Router();
+import express from "express";
 import users from "../models/users.js";
-import {v4 as uuid4} from 'uuid';
-import { setUser } from "../services/auth.js";
-import {generatewebtoken} from '../services/authentication.js'
+import bcrypt from "bcrypt";
+import { generatewebtoken, verifyToken } from "../services/authentication.js";
+import cors from "cors";
 
-router.post("/register", async(req, res) => {
-    // const username = "feih"
-    // const password = "feih"
-    // const email = "feih@gmail.com"
-    const {username, password, email} =  req.body;
-    const newuser = new users({username, password, email});
-    try {
-        const user = await newuser.save();
-        // res.json(user);
+const router = express.Router();
 
-        const token = generatewebtoken(user);
-        res.cookie('token', token, { httpOnly: true });
-        res.json({ message: "registerd succesfully", token });
-        console.log(token);
-    } catch (error) {
-        console.error(error,"error in creating a user")
+// Middleware to verify token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (token == null) return res.sendStatus(401);
+
+  verifyToken(token, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// Use CORS
+router.use(cors());
+
+// User Registration Route
+router.post("/register", async (req, res) => {
+  const { username, password, email } = req.body;
+
+  try {
+    // Check if user already exists
+    const existingUser = await users.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
     }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create and save new user
+    const newUser = new users({
+      username,
+      password: hashedPassword,
+      email,
+    });
+
+    await newUser.save();
+
+    // Generate token
+    const token = generatewebtoken({ id: newUser._id });
+
+    res.cookie("token", token, { httpOnly: true });
+    res.status(201).json({ message: "Registered successfully", token });
+  } catch (error) {
+    console.error("Error in creating a user:", error);
+    res
+      .status(500)
+      .json({ message: "Server side error", error: error.message });
+  }
 });
 
-router.post('/login', async (req, res) => {
-    const {username,password}= req.body;
-    const user = await users.findOne({username: username})
-    if(!user){
-        res.json({message: "user not found"})
-    }else{if(password !=user.password){res.json({message: "password  IS incorrect"})}
-     else{
-        // const token = uuid4();
-        // setUser(user,token);
-        // res.cookie('token',user,{httpOnly:true});
-        // res.send(user)
-        const token = generatewebtoken(user);
-        res.cookie('token', token, { httpOnly: true });
-        res.json({ message: "Login successful", token });
-        console.log(token);
-        // res.json({message: "login successful"},token);
-    };
-    }}
-)
-router.post('/', async (req, res)=>{
-console.log(req.body);
-const {username, name,Bio,owner} = req.body;
-// console.log(owner);
-// const user = await users.findOne({_id:owner });
-const user = await users.findOne({_id: owner})
-// console.log(user);
-if(!user){
-    res.json({message: "user not found"})
-}else{
-    user.username = username;
-    user.name = name;
-    user.Bio = Bio;
-    const updateduser = await user.save();
-    res.json(updateduser);
-    console.log(updateduser);
-}});
+// User Login Route
+router.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    const user = await users.findOne({ username });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect password" });
+    }
+
+    const token = generatewebtoken({ id: user._id });
+    res.cookie("token", token, { httpOnly: true });
+    res.status(200).json({ message: "Login successful", token });
+  } catch (error) {
+    console.error("Error in login:", error);
+    res
+      .status(500)
+      .json({ message: "Server side error", error: error.message });
+  }
+});
+
+// Fetch User Profile Data
+router.get("/user/:userId", authenticateToken, async (req, res) => {
+  try {
+    const user = await users.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({
+      username: user.username,
+      name: user.name,
+      bio: user.bio,
+      profilePic: user.profilePic,
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res
+      .status(500)
+      .json({ message: "Server side error", error: error.message });
+  }
+});
+
+// Edit Profile Route
+router.post("/editprofile", authenticateToken, async (req, res) => {
+  const { userId, username, name, bio, profilePic } = req.body;
+
+  try {
+    const user = await users.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (username !== undefined) user.username = username;
+    if (name !== undefined) user.name = name;
+    if (bio !== undefined) user.bio = bio;
+    if (profilePic !== undefined) user.profilePic = profilePic;
+
+    await user.save();
+    res.status(200).json({ message: "User details updated" });
+  } catch (error) {
+    console.error("Error updating user details:", error);
+    res
+      .status(500)
+      .json({ message: "Server side error", error: error.message });
+  }
+});
+
+// Change Password Route
+router.post("/changepassword", authenticateToken, async (req, res) => {
+  const { userId, oldPassword, newPassword } = req.body;
+
+  try {
+    const user = await users.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res
+      .status(500)
+      .json({ message: "Server side error", error: error.message });
+  }
+});
+
+// Logout Route
+router.post("/logout", authenticateToken, (req, res) => {
+  res.clearCookie("token");
+  res.status(200).json({ message: "Logged out successfully" });
+});
 
 export default router;
