@@ -47,7 +47,7 @@ router.post("/register", async (req, res) => {
     await newUser.save();
 
     // Generate token
-    const token = generatewebtoken({ id: newUser._id });
+    const token = generatewebtoken(newuser);
 
     res.cookie("token", token, { httpOnly: true });
     res.status(201).json({ message: "Registered successfully", token });
@@ -74,7 +74,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Incorrect password" });
     }
 
-    const token = generatewebtoken({ id: user._id });
+    const token = generatewebtoken(user);
     res.cookie("token", token, { httpOnly: true });
     res.status(200).json({ message: "Login successful", token });
   } catch (error) {
