@@ -10,11 +10,16 @@ const router = express.Router();
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-
-  if (token == null) return res.sendStatus(401);
+  if (token == null) {
+    console.log("No token provided");
+    return res.sendStatus(401);
+  }
 
   verifyToken(token, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) {
+      console.log("Token verification failed:", err);
+      return res.sendStatus(403);
+    }
     req.user = user;
     next();
   });
@@ -91,7 +96,9 @@ router.post("/login", async (req, res) => {
 
 
 // Fetch User Profile Data
-router.get("/user/:userId", authenticateToken, async (req, res) => {
+router.get("/:userId", authenticateToken,(req, res, next) => {
+  next();
+}, authenticateToken, async (req, res) => {
   try {
     const user = await users.findById(req.params.userId);
     if (!user) {

@@ -71,7 +71,7 @@ const Edit = () => {
       console.log("Request Data:", requestData);
 
       const response = await axios.post(
-        "http://localhost:3001/editprofile",
+        "http://localhost:3001/editprofile/editprofile",
         requestData,
         config
       );

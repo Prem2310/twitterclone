@@ -7,7 +7,7 @@ import users from './models/users.js';
 import cors from 'cors';
 const app = express();
 
-app.use(express.json());
+app.use(express.json({limit: '50mb'}));
 app.use(cors());
 
 // app.get('/register',userrouter);
@@ -16,6 +16,8 @@ app.use("/login",userrouter);
 app.use("/gettweet",twitterrouter2);
 app.use('/tweet',tweetrouter);
 app.use('/editprofile',userrouter);
+app.use("/user", userrouter);
+
 app.get('/', (req, res) => {
   res.send('Helo Word!');
 });
