@@ -25,12 +25,15 @@ router.use(cors());
 
 // User Registration Route
 router.post("/register", async (req, res) => {
+  // console.log("Register Request:", req.body);
+  // console.log("register route hittt");
   const { username, password, email } = req.body;
 
   try {
     // Check if user already exists
     const existingUser = await users.findOne({ email });
     if (existingUser) {
+      console.log("User already exists");
       return res.status(400).json({ message: "User already exists" });
     }
 
@@ -47,43 +50,45 @@ router.post("/register", async (req, res) => {
     await newUser.save();
 
     // Generate token
-    const token = generatewebtoken(newuser);
+    const token = generatewebtoken(newUser);
 
     res.cookie("token", token, { httpOnly: true });
     res.status(201).json({ message: "Registered successfully", token });
   } catch (error) {
     console.error("Error in creating a user:", error);
-    res
-      .status(500)
-      .json({ message: "Server side error", error: error.message });
+    res.status(500).json({ message: "Server side error", error: error.message });
   }
 });
 
-// User Login Route
 router.post("/login", async (req, res) => {
+  // console.log("Login Request:", req.body);
   const { username, password } = req.body;
 
   try {
+    // Find user by username
     const user = await users.findOne({ username });
     if (!user) {
+      // console.log("User not found");
       return res.status(400).json({ message: "User not found" });
     }
 
+    // Check if password matches
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      // console.log("Password mismatch");
       return res.status(400).json({ message: "Incorrect password" });
     }
 
+    // Generate token
     const token = generatewebtoken(user);
     res.cookie("token", token, { httpOnly: true });
     res.status(200).json({ message: "Login successful", token });
   } catch (error) {
     console.error("Error in login:", error);
-    res
-      .status(500)
-      .json({ message: "Server side error", error: error.message });
+    res.status(500).json({ message: "Server side error", error: error.message });
   }
 });
+
 
 // Fetch User Profile Data
 router.get("/user/:userId", authenticateToken, async (req, res) => {
@@ -100,9 +105,7 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching user profile:", error);
-    res
-      .status(500)
-      .json({ message: "Server side error", error: error.message });
+    res.status(500).json({ message: "Server side error", error: error.message });
   }
 });
 
@@ -125,9 +128,7 @@ router.post("/editprofile", authenticateToken, async (req, res) => {
     res.status(200).json({ message: "User details updated" });
   } catch (error) {
     console.error("Error updating user details:", error);
-    res
-      .status(500)
-      .json({ message: "Server side error", error: error.message });
+    res.status(500).json({ message: "Server side error", error: error.message });
   }
 });
 
@@ -152,9 +153,7 @@ router.post("/changepassword", authenticateToken, async (req, res) => {
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {
     console.error("Error changing password:", error);
-    res
-      .status(500)
-      .json({ message: "Server side error", error: error.message });
+    res.status(500).json({ message: "Server side error", error: error.message });
   }
 });
 

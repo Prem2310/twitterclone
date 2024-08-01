@@ -1,6 +1,6 @@
 import axios from "axios";
 import React, { useState, useEffect } from "react";
-import { jwtDecode } from "jwt-decode";
+import {jwtDecode} from "jwt-decode"; // Correct import
 import { useNavigate } from "react-router-dom";
 
 const Edit = () => {
@@ -60,22 +60,27 @@ const Edit = () => {
         },
       };
 
+      const requestData = {
+        userId,
+        username,
+        name,
+        Bio: bio,
+        profilePic,
+      };
+
+      console.log("Request Data:", requestData);
+
       const response = await axios.post(
         "http://localhost:3001/editprofile",
-        {
-          userId,
-          username,
-          name,
-          Bio: bio,
-          profilePic,
-        },
+        requestData,
         config
       );
 
-      console.log(response.data);
+      console.log("Response Data:", response.data);
       navigate("/profile");
     } catch (error) {
       console.error("Error editing profile:", error);
+      console.error("Error details:", error.response?.data); // Log detailed error response
       setError(
         error.response?.data?.message ||
           "An error occurred while editing the profile"
@@ -88,50 +93,53 @@ const Edit = () => {
   }
 
   return (
-    <div className="edit-profile-container">
-      <h1 className="page-title">Edit Profile</h1>
+    <div className="edit-profile-container max-w-md mx-auto p-4 bg-white rounded-lg shadow-md mt-10">
+      <h1 className="text-2xl font-bold text-center mb-6">Edit Profile</h1>
       <form onSubmit={handleEditUserProfile} className="edit-profile-form">
-        <div className="form-group">
-          <label>Username:</label>
+        <div className="form-group mb-4">
+          <label className="block text-gray-700 font-bold mb-2">Username:</label>
           <input
             type="text"
             name="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Edit your username"
+            className="w-full px-3 py-2 border rounded-md"
           />
         </div>
-        <div className="form-group">
-          <label>Name:</label>
+        <div className="form-group mb-4">
+          <label className="block text-gray-700 font-bold mb-2">Name:</label>
           <input
             type="text"
             name="name"
             placeholder="Edit your name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md"
           />
         </div>
-        <div className="form-group">
-          <label>Bio:</label>
+        <div className="form-group mb-4">
+          <label className="block text-gray-700 font-bold mb-2">Bio:</label>
           <textarea
             name="bio"
             placeholder="Edit your Bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md"
           />
         </div>
-        <div className="form-group">
-          <label>Profile Picture:</label>
-          <input onChange={handleFileChange} type="file" accept="image/*" />
+        <div className="form-group mb-4">
+          <label className="block text-gray-700 font-bold mb-2">Profile Picture:</label>
+          <input onChange={handleFileChange} type="file" accept="image/*" className="w-full px-3 py-2 border rounded-md" />
           {profilePic && (
             <img
               src={profilePic}
               alt="Profile"
-              style={{ width: "100px", height: "100px", marginTop: "10px" }}
+              className="mt-4 w-24 h-24 rounded-full mx-auto"
             />
           )}
         </div>
-        <button type="submit" className="submit-button">
+        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
           Save Changes
         </button>
       </form>
